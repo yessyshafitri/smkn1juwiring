@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useBerita, useSiap } from "@/lib/store";
+import { useBerita, useBeritaTermuat, useSiap } from "@/lib/store";
 
 export default function BeritaDetail({ id }) {
   const semua = useBerita();
   const siap = useSiap();
+  const termuat = useBeritaTermuat();
 
-  if (!siap) {
-    return <p className="px-6 py-16 text-center text-slate-500">Memuat...</p>;
-  }
+if (!siap || !termuat) {
+  return <p className="px-6 py-16 text-center text-slate-500">Memuat...</p>;
+}
 
   const berita = semua.find((b) => b.id === id);
 

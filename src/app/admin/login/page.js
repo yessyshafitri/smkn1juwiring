@@ -10,20 +10,25 @@ const input =
 export default function LoginPage() {
   const router = useRouter();
   const status = useAdminStatus();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [proses, setProses] = useState(false);
 
   useEffect(() => {
     if (status === "masuk") router.replace("/admin");
   }, [status, router]);
 
-  function kirim(e) {
+  async function kirim(e) {
     e.preventDefault();
-    if (login(username, password)) {
+    setProses(true);
+    setError("");
+    const pesanError = await login(email, password);
+    setProses(false);
+    if (!pesanError) {
       router.push("/admin");
     } else {
-      setError("Username atau password salah.");
+      setError(pesanError);
     }
   }
 
@@ -38,13 +43,14 @@ export default function LoginPage() {
         <form onSubmit={kirim} className="mt-6 space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Username
+              Email
             </label>
             <input
+              type="email"
               className={input}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
           </div>
@@ -66,15 +72,12 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
+            disabled={proses}
+            className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
           >
-            Masuk
+            {proses ? "Memproses..." : "Masuk"}
           </button>
         </form>
-
-        <p className="mt-4 text-xs text-slate-500">
-          Akun demo: username <b>admin</b>, password <b>admin123</b>
-        </p>
       </div>
     </div>
   );

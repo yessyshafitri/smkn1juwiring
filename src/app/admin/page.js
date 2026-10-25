@@ -7,8 +7,11 @@ import {
   useAdminStatus,
   logout,
   useBerita,
-  simpanBerita,
-  resetBerita,
+  useBeritaTermuat,
+  tambahBerita,
+  ubahBerita,
+  hapusBerita,
+  isiDataAwal,
 } from "@/lib/store";
 
 const KATEGORI = [
@@ -77,9 +80,11 @@ function idUnik(judul, daftar) {
 function Dashboard() {
   const router = useRouter();
   const berita = useBerita();
+  const termuat = useBeritaTermuat();
   const [form, setForm] = useState(kosong);
   const [editId, setEditId] = useState(null);
   const [pesan, setPesan] = useState("");
+  const [menyimpan, setMenyimpan] = useState(false);
 
   const jumlahKategori = new Set(berita.map((b) => b.kategori)).size;
 
@@ -104,43 +109,58 @@ function Dashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function simpan(e) {
+  async function simpan(e) {
     e.preventDefault();
     const isi = form.isi
       .split(/\n+/)
       .map((s) => s.trim())
       .filter(Boolean);
 
-    if (editId) {
-      simpanBerita(
-        berita.map((b) => (b.id === editId ? { ...b, ...form, isi } : b))
-      );
-      setPesan("Berita berhasil diperbarui.");
-    } else {
-      const id = idUnik(form.judul, berita);
-      simpanBerita([{ id, ...form, isi }, ...berita]);
-      setPesan("Berita berhasil ditambahkan.");
+    setMenyimpan(true);
+    try {
+      if (editId) {
+        await ubahBerita(editId, { ...form, isi });
+        setPesan("Berita berhasil diperbarui.");
+      } else {
+        await tambahBerita({ id: idUnik(form.judul, berita), ...form, isi });
+        setPesan("Berita berhasil ditambahkan.");
+      }
+      batal();
+    } catch (err) {
+      setPesan("Gagal menyimpan: " + err.message);
+    } finally {
+      setMenyimpan(false);
     }
-    batal();
   }
 
-  function hapus(b) {
+  async function hapus(b) {
     if (!confirm(`Hapus berita "${b.judul}"?`)) return;
-    simpanBerita(berita.filter((x) => x.id !== b.id));
-    if (editId === b.id) batal();
-    setPesan("Berita berhasil dihapus.");
+    try {
+      await hapusBerita(b.id);
+      if (editId === b.id) batal();
+      setPesan("Berita berhasil dihapus.");
+    } catch (err) {
+      setPesan("Gagal menghapus: " + err.message);
+    }
   }
 
-  function kembalikan() {
-    if (!confirm("Kembalikan semua berita ke data awal? Perubahanmu akan hilang."))
+  async function isiAwal() {
+    if (
+      !confirm(
+        "Isi database dengan 6 berita data awal? Berita dengan id yang sama akan ditimpa."
+      )
+    )
       return;
-    resetBerita();
-    batal();
-    setPesan("Data dikembalikan ke data awal.");
+    try {
+      await isiDataAwal();
+      setPesan("Data awal berhasil diisi.");
+    } catch (err) {
+      setPesan("Gagal mengisi data: " + err.message);
+    }
   }
 
-  function keluar() {
-    logout();
+  async function keluar() {
+    await logout();
     router.push("/admin/login");
   }
 
@@ -150,7 +170,7 @@ function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold text-blue-700">Dashboard Admin</h1>
           <p className="text-sm text-slate-500">
-            Kelola berita sekolah. Data tersimpan di browser (localStorage).
+            Kelola berita sekolah. Data tersimpan di Supabase.
           </p>
         </div>
         <div className="flex gap-2">
@@ -276,9 +296,14 @@ function Dashboard() {
           <div className="flex gap-2">
             <button
               type="submit"
-              className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white transition hover:bg-blue-700"
+              disabled={menyimpan}
+              className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
             >
-              {editId ? "Simpan Perubahan" : "Tambah Berita"}
+              {menyimpan
+                ? "Menyimpan..."
+                : editId
+                ? "Simpan Perubahan"
+                : "Tambah Berita"}
             </button>
             {editId && (
               <button
@@ -297,48 +322,57 @@ function Dashboard() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-xl font-bold text-slate-800">Daftar Berita</h2>
           <button
-            onClick={kembalikan}
-            className="text-sm font-semibold text-slate-500 hover:text-red-600 hover:underline"
+            onClick={isiAwal}
+            className="text-sm font-semibold text-slate-500 hover:text-blue-600 hover:underline"
           >
-            Reset ke data awal
+            Isi data awal
           </button>
         </div>
 
-        <ul className="space-y-3">
-          {berita.map((b) => (
-            <li
-              key={b.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-slate-800">{b.judul}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {b.tanggal} · {b.kategori}
-                </p>
-              </div>
-              <div className="flex gap-2 text-sm font-semibold">
-                <Link
-                  href={`/berita/${b.id}`}
-                  className="rounded-lg border border-slate-300 px-3 py-1 text-slate-700 transition hover:bg-slate-100"
-                >
-                  Lihat
-                </Link>
-                <button
-                  onClick={() => mulaiEdit(b)}
-                  className="rounded-lg bg-amber-500 px-3 py-1 text-white transition hover:bg-amber-600"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => hapus(b)}
-                  className="rounded-lg bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
-                >
-                  Hapus
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {!termuat ? (
+          <p className="text-slate-500">Memuat berita...</p>
+        ) : berita.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+            Belum ada berita. Klik &quot;Isi data awal&quot; atau tambahkan
+            berita lewat form di atas.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {berita.map((b) => (
+              <li
+                key={b.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-slate-800">{b.judul}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {b.tanggal} · {b.kategori}
+                  </p>
+                </div>
+                <div className="flex gap-2 text-sm font-semibold">
+                  <Link
+                    href={`/berita/${b.id}`}
+                    className="rounded-lg border border-slate-300 px-3 py-1 text-slate-700 transition hover:bg-slate-100"
+                  >
+                    Lihat
+                  </Link>
+                  <button
+                    onClick={() => mulaiEdit(b)}
+                    className="rounded-lg bg-amber-500 px-3 py-1 text-white transition hover:bg-amber-600"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => hapus(b)}
+                    className="rounded-lg bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

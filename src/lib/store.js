@@ -1,100 +1,106 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { supabase } from "@/lib/supabase";
 import { daftarBerita } from "@/data/sekolah";
 
-// Akun demo. Siapa pun bisa membaca ini, jadi hanya untuk latihan.
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin123";
+// ---------- Berita (Supabase) ----------
 
-const BERITA_KEY = "smkn1-berita";
-const AUTH_KEY = "smkn1-admin";
-const EVENT = "smkn1-store-berubah";
+let cache = null; // null = belum dimuat
+const pendengar = new Set();
 
-function subscribe(callback) {
-  window.addEventListener(EVENT, callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    window.removeEventListener(EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
+function subscribe(fn) {
+  pendengar.add(fn);
+  return () => pendengar.delete(fn);
 }
 
-function beritikan() {
-  window.dispatchEvent(new Event(EVENT));
+function umumkan() {
+  pendengar.forEach((fn) => fn());
 }
 
-// ---------- Berita ----------
+async function muat() {
+  const { data, error } = await supabase
+    .from("berita")
+    .select("*")
+    .order("dibuat", { ascending: false });
 
-export function simpanBerita(daftar) {
-  try {
-    localStorage.setItem(BERITA_KEY, JSON.stringify(daftar));
-  } catch {}
-  beritikan();
+  // Kalau database gagal atau masih kosong, pakai data awal dari sekolah.js
+  cache = error || !data || data.length === 0 ? daftarBerita : data;
+  umumkan();
 }
-
-export function resetBerita() {
-  try {
-    localStorage.removeItem(BERITA_KEY);
-  } catch {}
-  beritikan();
-}
-
-const ambilMentah = () => {
-  try {
-    return localStorage.getItem(BERITA_KEY);
-  } catch {
-    return null;
-  }
-};
 
 export function useBerita() {
-  const mentah = useSyncExternalStore(subscribe, ambilMentah, () => null);
+  const data = useSyncExternalStore(subscribe, () => cache, () => null);
 
-  return useMemo(() => {
-    if (mentah) {
-      try {
-        return JSON.parse(mentah);
-      } catch {}
-    }
-    return daftarBerita;
-  }, [mentah]);
+  useEffect(() => {
+    if (cache === null) muat();
+  }, []);
+
+  return data ?? [];
 }
 
-// ---------- Login ----------
-
-export function login(username, password) {
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
-    try {
-      localStorage.setItem(AUTH_KEY, "1");
-    } catch {}
-    beritikan();
-    return true;
-  }
-  return false;
+export function useBeritaTermuat() {
+  return useSyncExternalStore(subscribe, () => cache !== null, () => false);
 }
 
-export function logout() {
-  try {
-    localStorage.removeItem(AUTH_KEY);
-  } catch {}
-  beritikan();
+export async function tambahBerita(item) {
+  const { error } = await supabase.from("berita").insert(item);
+  if (error) throw error;
+  await muat();
 }
 
-const ambilStatus = () => {
-  try {
-    return localStorage.getItem(AUTH_KEY) === "1" ? "masuk" : "keluar";
-  } catch {
-    return "keluar";
-  }
-};
+export async function ubahBerita(id, isian) {
+  const { error } = await supabase.from("berita").update(isian).eq("id", id);
+  if (error) throw error;
+  await muat();
+}
+
+export async function hapusBerita(id) {
+  const { error } = await supabase.from("berita").delete().eq("id", id);
+  if (error) throw error;
+  await muat();
+}
+
+// Mengisi tabel dengan 6 berita dari sekolah.js
+export async function isiDataAwal() {
+  const baris = daftarBerita.map((b, i) => ({
+    ...b,
+    dibuat: new Date(Date.now() - i * 1000).toISOString(),
+  }));
+  const { error } = await supabase.from("berita").upsert(baris);
+  if (error) throw error;
+  await muat();
+}
+
+// ---------- Login (Supabase Auth) ----------
+
+// Mengembalikan null kalau berhasil, atau teks pesan error kalau gagal
+export async function login(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  return error ? error.message : null;
+}
+
+export async function logout() {
+  await supabase.auth.signOut();
+}
 
 // Mengembalikan "memuat" | "masuk" | "keluar"
 export function useAdminStatus() {
-  return useSyncExternalStore(subscribe, ambilStatus, () => "memuat");
+  const [status, setStatus] = useState("memuat");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setStatus(data.session ? "masuk" : "keluar");
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setStatus(session ? "masuk" : "keluar");
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  return status;
 }
 
-// false di server dan saat hidrasi, true setelah halaman siap di browser
 export function useSiap() {
   return useSyncExternalStore(
     () => () => {},
