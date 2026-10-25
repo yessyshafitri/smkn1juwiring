@@ -1,5 +1,4 @@
-import BeritaCard from "@/components/BeritaCard";
-import { daftarBerita } from "@/data/sekolah";
+import BeritaList from "@/components/BeritaList";
 
 export const metadata = { title: "Berita | SMK Negeri 1 Juwiring" };
 
@@ -10,10 +9,8 @@ export default function BeritaPage() {
       <p className="mt-2 text-slate-600">
         Informasi, pengumuman, dan kegiatan terbaru.
       </p>
-      <div className="mt-8 grid gap-5 md:grid-cols-2">
-        {daftarBerita.map((b) => (
-          <BeritaCard key={b.id} berita={b} />
-        ))}
+      <div className="mt-8">
+        <BeritaList kolom="md:grid-cols-2" />
       </div>
     </div>
   );

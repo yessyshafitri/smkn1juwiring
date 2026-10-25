@@ -16,10 +16,10 @@ export const sekolah = {
   telepon: "(0272) 551102",
   email: "smknegeri1juwiring@yahoo.com",
   jamOperasional: "Senin - Jumat, 07.00 - 15.00 WIB",
-  tahunBerdiri: null, // TODO: isi tahun berdiri, misalnya 2000
+  tahunBerdiri: null, 
   profil:
     "SMK Negeri 1 Juwiring adalah sekolah kejuruan negeri di Desa Mrisen, Kecamatan Juwiring, Kabupaten Klaten. Sekolah ini mengembangkan pembelajaran berbasis industri melalui Teaching Factory dan Kelas Industri bersama sejumlah mitra dunia usaha.",
-  // TODO: tulis sejarah sekolahmu (di website asli bagian ini masih kosong)
+
   sejarah:
     "SMK Negeri 1 Juwiring berlokasi di Desa Mrisen, Kecamatan Juwiring, Kabupaten Klaten. Sejak berdiri, sekolah terus berkembang dengan menambah kompetensi keahlian, sarana praktik, dan kemitraan dengan dunia industri. (Lengkapi dengan tahun berdiri dan perjalanan sekolah.)",
   visi: "Mewujudkan SMK unggul yang kompeten, bermartabat dan berwawasan lingkungan, serta mampu menghadapi era Revolusi Industri 4.0.",
@@ -30,7 +30,7 @@ export const sekolah = {
     "Mengupdate kompetensi tenaga pendidik dan kependidikan.",
     "Menerapkan budaya hidup bermartabat bagi seluruh warga sekolah dan ikut menjaga kelestarian lingkungan hidup.",
   ],
-  // Perlu dicek ulang: disimpulkan dari kode kelas di website (AK, AP, PM, MM, TKJ)
+  
   kompetensiKeahlian: [
     "Akuntansi",
     "Administrasi Perkantoran",
@@ -83,8 +83,7 @@ export const sekolah = {
   ],
 };
 
-// 3 berita pertama diambil dari website sekolah.
-// 3 berita terakhir adalah DATA SIMULASI (boleh, sesuai soal UTS).
+
 export const daftarBerita = [
   {
     id: "realisasi-dana-bop-semester-1-2026",

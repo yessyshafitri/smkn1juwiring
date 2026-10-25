@@ -1,11 +1,9 @@
 import Link from "next/link";
 import Hero from "@/components/Hero";
-import BeritaCard from "@/components/BeritaCard";
-import { sekolah, daftarBerita } from "@/data/sekolah";
+import BeritaList from "@/components/BeritaList";
+import { sekolah } from "@/data/sekolah";
 
 export default function Home() {
-  const beritaTerbaru = daftarBerita.slice(0, 3);
-
   return (
     <>
       <Hero />
@@ -62,11 +60,7 @@ export default function Home() {
             Semua berita →
           </Link>
         </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {beritaTerbaru.map((b) => (
-            <BeritaCard key={b.id} berita={b} />
-          ))}
-        </div>
+        <BeritaList limit={3} />
       </section>
     </>
   );
